@@ -3,160 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Монета Кликері</title>
+    <title>Coin Clicker</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Adsgram SDK -->
+    <script src="https://adsgram.ai/js/adsgram-ad-sdk.js"></script>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #1e1e2e;
+            font-family: sans-serif;
+            background-color: #1c1c1e;
             color: #ffffff;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             margin: 0;
-            padding: 20px;
             user-select: none;
         }
-
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: #2b2b3d;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
         }
-
-        .score-board {
-            font-size: 28px;
-            font-weight: bold;
+        .score {
+            font-size: 2rem;
             margin-bottom: 20px;
             color: #ffd700;
         }
-
-        .click-btn {
+        .coin {
             width: 150px;
             height: 150px;
+            background: radial-gradient(circle, #ffe066 0%, #f59f00 100%);
             border-radius: 50%;
-            background: radial-gradient(circle, #ffd700, #ffaa00);
-            border: 4px solid #fff;
-            font-size: 60px;
-            cursor: pointer;
-            outline: none;
-            transition: transform 0.1s;
-            box-shadow: 0 8px 15px rgba(255, 215, 0, 0.4);
-        }
-
-        .click-btn:active {
-            transform: scale(0.92);
-        }
-
-        .shop {
-            margin-top: 30px;
-            text-align: left;
-        }
-
-        .shop-item {
-            background: #3b3b52;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 8px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-
-        .shop-btn {
-            background: #4caf50;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
+            justify-content: center;
+            font-size: 4rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
             cursor: pointer;
-            font-weight: bold;
+            transition: transform 0.1s;
         }
-
-        .shop-btn:disabled {
-            background: #777;
-            cursor: not-allowed;
+        .coin:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Монета Кликері</h1>
-        <div class="score-board">💰 <span id="score">0</span></div>
-
-        <button class="click-btn" onclick="clickCoin()">🪙</button>
-
-        <div class="shop">
-            <h3>Дүкен (Жақсартулар)</h3>
-            
-            <div class="shop-item">
-                <div>
-                    <div><strong>Күшті клик (+1)</strong></div>
-                    <small>Бағасы: <span id="click-cost">10</span> монета</small>
-                </div>
-                <button class="shop-btn" id="btn-click" onclick="buyClickUpgrade()">Сатып алу</button>
-            </div>
-
-            <div class="shop-item">
-                <div>
-                    <div><strong>Автокликер (+1/сек)</strong></div>
-                    <small>Бағасы: <span id="auto-cost">50</span> монета</small>
-                </div>
-                <button class="shop-btn" id="btn-auto" onclick="buyAutoClicker()">Сатып алу</button>
-            </div>
-        </div>
-    </div>
+    <h1>Coin Clicker</h1>
+    <div class="score" id="score">0</div>
+    <div class="coin" id="coin">🪙</div>
 
     <script>
-        let score = 0;
-        let clickPower = 1;
-        let autoClickers = 0;
-
-        let clickUpgradeCost = 10;
-        let autoUpgradeCost = 50;
-
-        function updateUI() {
-            document.getElementById('score').innerText = score;
-            document.getElementById('click-cost').innerText = clickUpgradeCost;
-            document.getElementById('auto-cost').innerText = autoUpgradeCost;
-
-            document.getElementById('btn-click').disabled = score < clickUpgradeCost;
-            document.getElementById('btn-auto').disabled = score < autoUpgradeCost;
+        // Telegram WebApp бастау
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
         }
 
-        function clickCoin() {
-            score += clickPower;
-            updateUI();
+        // Ойын логикасы
+        let count = 0;
+        const scoreEl = document.getElementById('score');
+        const coinEl = document.getElementById('coin');
+
+        coinEl.addEventListener('click', () => {
+            count++;
+            scoreEl.innerText = count;
+        });
+
+        // Adsgram инициализациясы (Сіздің UnitID: int-44684)
+        const AdController = window.Adsgram.init({ blockId: "int-44684" });
+
+        function showAdsgramAd() {
+            AdController.show().then((result) => {
+                console.log("Жарнама сәтті көрсетілді:", result);
+            }).catch((error) => {
+                console.error("Жарнама қатесі:", error);
+            });
         }
 
-        function buyClickUpgrade() {
-            if (score >= clickUpgradeCost) {
-                score -= clickUpgradeCost;
-                clickPower += 1;
-                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.5);
-                updateUI();
-            }
-        }
+        // Жарнаманы бірінші рет 5 секундтан кейін көрсету
+        setTimeout(() => {
+            showAdsgramAd();
+        }, 5000);
 
-        function buyAutoClicker() {
-            if (score >= autoUpgradeCost) {
-                score -= autoUpgradeCost;
-                autoClickers += 1;
-                autoUpgradeCost = Math.floor(autoUpgradeCost * 1.8);
-                updateUI();
-            }
-        }
-
+        // Кейін әр 5 секунд (5000 мс) сайын қайталап шығару
         setInterval(() => {
-            if (autoClickers > 0) {
-                score += autoClickers;
-                updateUI();
-            }
-        }, 1000);
-
-        updateUI();
+            showAdsgramAd();
+        }, 5000);
     </script>
-
 </body>
 </html>
