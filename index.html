@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notcoin Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://adsgram.ai/js/adsgram-ad-sdk.js"></script>
+    <style>
+        body {
+            background-color: #0f0f0f;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            padding: 20px 10px;
+            box-sizing: border-box;
+            user-select: none;
+            overflow: hidden;
+        }
+        .header {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .balance {
+            font-size: 3rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+        .clicker-area {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+        .coin {
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, #27272a 0%, #09090b 100%);
+            border: 4px solid #3f3f46;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6rem;
+            box-shadow: 0 0 40px rgba(0, 255, 204, 0.15);
+            cursor: pointer;
+            transition: transform 0.05s ease;
+        }
+        .coin:active {
+            transform: scale(0.92);
+        }
+        .floating-num {
+            position: absolute;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #00ffcc;
+            animation: floatUp 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-90px) scale(1.3); }
+        }
+        .energy-container {
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 15px;
+        }
+        .energy-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #a1a1aa;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .energy-bar-bg {
+            width: 100%;
+            height: 14px;
+            background: #18181b;
+            border-radius: 7px;
+            overflow: hidden;
+            border: 1px solid #27272a;
+        }
+        .energy-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffcc, #00bfff);
+            width: 100%;
+            transition: width 0.2s;
+        }
+        .menu-panel {
+            width: 100%;
+            max-width: 350px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: #18181b;
+            padding: 10px;
+            border-radius: 16px;
+            border: 1px solid #27272a;
+        }
+        .menu-btn {
+            background: #27272a;
+            border: none;
+            color: #fff;
+            padding: 10px 5px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .menu-btn:active {
+            background: #3f3f46;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="balance"><span id="score">0</span> 🪙</div>
+    </div>
+
+    <div class="clicker-area" id="clickArea">
+        <div class="coin" id="coin">💎</div>
+    </div>
+
+    <div class="energy-container">
+        <div class="energy-info">
+            <span>⚡ Энергия</span>
+            <span><span id="energy">1000</span> / 1000</span>
+        </div>
+        <div class="energy-bar-bg">
+            <div class="energy-bar-fill" id="energyFill"></div>
+        </div>
+    </div>
+
+    <div class="menu-panel">
+        <button class="menu-btn" onclick="activateBoost()">🚀 <span>Буст 10x</span></button>
+        <button class="menu-btn" onclick="claimDaily()">📅 <span>Бонус</span></button>
+        <button class="menu-btn" onclick="showAd(true)">🎬 <span>Жарнама</span></button>
+        <button class="menu-btn" onclick="inviteFriend()">👥 <span>Дос</span></button>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        let count = parseInt(localStorage.getItem('notcoin_count')) || 0;
+        let energy = parseInt(localStorage.getItem('notcoin_energy')) || 1000;
+        const maxEnergy = 1000;
+        let multiplier = 1;
+
+        const scoreEl = document.getElementById('score');
+        const coinEl = document.getElementById('coin');
+        const energyEl = document.getElementById('energy');
+        const energyFill = document.getElementById('energyFill');
+        const clickArea = document.getElementById('clickArea');
+
+        scoreEl.innerText = count;
+        updateEnergyUI();
+
+        // Басқан кезде монеталар бірден сақталады
+        coinEl.addEventListener('click', (e) => {
+            if (energy <= 0) {
+                alert("Энергия таусылды!");
+                return;
+            }
+
+            energy -= 1;
+            count += multiplier;
+            
+            scoreEl.innerText = count;
+            updateEnergyUI();
+
+            localStorage.setItem('notcoin_count', count);
+            localStorage.setItem('notcoin_energy', energy);
+
+            // Клик эффектісі
+            const rect = coinEl.getBoundingClientRect();
+            const x = e.clientX - rect.left - 20;
+            const y = e.clientY - rect.top - 20;
+            
+            const floatText = document.createElement('div');
+            floatText.className = 'floating-num';
+            floatText.innerText = '+' + multiplier;
+            floatText.style.left = x + 'px';
+            floatText.style.top = y + 'px';
+            clickArea.appendChild(floatText);
+
+            setTimeout(() => floatText.remove(), 600);
+        });
+
+        // Энергияның қайта толуы
+        setInterval(() => {
+            if (energy < maxEnergy) {
+                energy = Math.min(maxEnergy, energy + 3);
+                updateEnergyUI();
+                localStorage.setItem('notcoin_energy', energy);
+            }
+        }, 1000);
+
+        function updateEnergyUI() {
+            energyEl.innerText = energy;
+            energyFill.style.width = (energy / maxEnergy) * 100 + '%';
+        }
+
+        // 10x Буст (30 секунд)
+        function activateBoost() {
+            if (multiplier > 1) {
+                alert("Буст әлі де жұмыс істеп тұр!");
+                return;
+            }
+            multiplier = 10;
+            alert("🚀 10x Буст қосылды!");
+            setTimeout(() => {
+                multiplier = 1;
+                alert("Буст уақыты аяқталды.");
+            }, 30000);
+        }
+
+        // Күнделікті бонус
+        function claimDaily() {
+            const today = new Date().toDateString();
+            if (localStorage.getItem('last_daily') === today) {
+                alert("Бүгінгі бонусты алып қойдыңыз!");
+                return;
+            }
+            localStorage.setItem('last_daily', today);
+            count += 500;
+            scoreEl.innerText = count;
+            localStorage.setItem('notcoin_count', count);
+            alert("🎉 Күнделікті бонус: +500 монета!");
+        }
+
+        // Adsgram Жарнамасы (Батырма арқылы немесе автоматты)
+        function showAd(isManual = false) {
+            if (window.Adsgram) {
+                const AdController = window.Adsgram.init({ blockId: "int-44684" });
+                AdController.show().then(() => {
+                    if (isManual) {
+                        count += 200;
+                        scoreEl.innerText = count;
+                        localStorage.setItem('notcoin_count', count);
+                        alert("Сыйақы: +200 монета қосылды!");
+                    }
+                }).catch(err => console.log(err));
+            } else if (isManual) {
+                alert("Жарнама жүктелмеді.");
+            }
+        }
+
+        // ӘР 40 СЕКУНД САЙЫН АВТОМАТТЫ ЖАРНАМА ШЫҒУЫ
+        setInterval(() => {
+            showAd(false);
+        }, 40000); // 40000 миллисекунд = 40 секунд
+
+        // Дос шақыру
+        function inviteFriend() {
+            count += 1000;
+            scoreEl.innerText = count;
+            localStorage.setItem('notcoin_count', count);
+            alert("Дос шақыру бонусы: +1000 монета!");
+        }
+    </script>
+</body>
+</html>
