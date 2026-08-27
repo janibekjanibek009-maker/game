@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notcoin Style Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle, #2b1055, #7597de);
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            text-align: center;
+            padding: 15px;
+        }
+        .score-container {
+            font-size: 38px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-top: 5px;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+        .energy-container {
+            font-size: 14px;
+            color: #a0aec0;
+            margin-top: 5px;
+        }
+        .clicker-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+        .tap-button {
+            width: 230px;
+            height: 230px;
+            background: linear-gradient(145deg, #f12711, #f5af19);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 15px 35px rgba(245, 175, 25, 0.4);
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        }
+        .tap-button:active {
+            transform: scale(0.90);
+            box-shadow: 0 5px 15px rgba(245, 175, 25, 0.6);
+        }
+        .footer {
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ad-button {
+            width: 100%;
+            padding: 15px;
+            background: #ffd700;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+            transition: background 0.2s;
+        }
+        .ad-button:disabled {
+            background: #555555;
+            color: #aaaaaa;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Баланс</h2>
+        <div class="score-container" id="score">0</div>
+        <div class="energy-container">Энергия: <span id="energy">1000</span> / 1000</div>
+    </div>
+
+    <div class="clicker-container">
+        <button class="tap-button" id="tapBtn">TAP</button>
+    </div>
+
+    <div class="footer">
+        <button class="ad-button" id="watchAdBtn">Жарнама көріп +300 алу 🎁</button>
+    </div>
+
+    <!-- Adsgram SDK -->
+    <script src="https://sad.adsgram.ai/js/sad.js"></script>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let score = parseInt(localStorage.getItem('notcoin_score')) || 0;
+        let energy = parseInt(localStorage.getItem('notcoin_energy')) || 1000;
+        const maxEnergy = 1000;
+
+        const scoreElement = document.getElementById('score');
+        const energyElement = document.getElementById('energy');
+        const watchAdBtn = document.getElementById('watchAdBtn');
+
+        scoreElement.textContent = score;
+        energyElement.textContent = energy;
+
+        // Ендік энергияны әр секунд сайын қалпына келтіру
+        setInterval(() => {
+            if (energy < maxEnergy) {
+                energy = Math.min(maxEnergy, energy + 3);
+                energyElement.textContent = energy;
+                localStorage.setItem('notcoin_energy', energy);
+            }
+        }, 1000);
+
+        // Тап жасау логикасы
+        document.getElementById('tapBtn').addEventListener('click', () => {
+            if (energy > 0) {
+                score += 1;
+                energy -= 1;
+                
+                scoreElement.textContent = score;
+                energyElement.textContent = energy;
+
+                localStorage.setItem('notcoin_score', score);
+                localStorage.setItem('notcoin_energy', energy);
+
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+            }
+        });
+
+        // Adsgram Жарнама баптауы (int-44805)
+        const adController = window.Adsgram ? window.Adsgram.init({ blockId: "int-44805", debug: true }) : null;
+
+        let adCooldown = parseInt(localStorage.getItem('ad_cooldown')) || 0;
+        
+        function updateAdButtonTimer() {
+            const now = Date.now();
+            if (adCooldown > now) {
+                const remainingSeconds = Math.ceil((adCooldown - now) / 1000);
+                watchAdBtn.disabled = true;
+                watchAdBtn.textContent = `Күте тұрыңыз: ${remainingSeconds} сек ⏳`;
+            } else {
+                watchAdBtn.disabled = false;
+                watchAdBtn.textContent = "Жарнама көріп +300 алу 🎁";
+            }
+        }
+
+        setInterval(updateAdButtonTimer, 1000);
+        updateAdButtonTimer();
+
+        watchAdBtn.addEventListener('click', async () => {
+            if (!adController) {
+                alert("Жарнама жүйесі әлі жүктелген жоқ.");
+                return;
+            }
+
+            try {
+                const result = await adController.show();
+                
+                score += 300;
+                energy = maxEnergy; 
+                
+                scoreElement.textContent = score;
+                energyElement.textContent = energy;
+
+                localStorage.setItem('notcoin_score', score);
+                localStorage.setItem('notcoin_energy', energy);
+
+                // 2 секундқа (200 миллисекунд) таймер қою
+                adCooldown = Date.now() + 2000;
+                localStorage.setItem('ad_cooldown', adCooldown);
+                updateAdButtonTimer();
+
+                alert("Құттықтаймыз! +300 монета қосылды!");
+            } catch (err) {
+                console.log("Жарнама жабылды немесе қате кетті:", err);
+            }
+        });
+    </script>
+</body>
+</html>
