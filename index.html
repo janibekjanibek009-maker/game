@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Tap Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body {
+            margin: 0; padding: 0;
+            background: #0f172a; color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            height: 100vh; overflow: hidden;
+            background-size: cover; background-position: center;
+        }
+        /* Top Navigation / Header */
+        .header {
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .wallet-soon {
+            background: #334155; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #94a3b8;
+        }
+        .top-ads-icons {
+            display: flex; gap: 8px;
+        }
+        .top-ad-btn {
+            background: #f59e0b; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; color: #fff; cursor: pointer;
+        }
+
+        /* Score & Main Area */
+        .score-section { text-align: center; margin-top: 10px; }
+        .score-container { font-size: 38px; font-weight: 900; color: #facc15; text-shadow: 0 0 20px rgba(250, 204, 21, 0.5); }
+        .energy-container { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+
+        .clicker-container { display: flex; align-items: center; justify-content: center; flex-grow: 1; position: relative; }
+        .tap-button {
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, #3b82f6, #1d4ed8);
+            border: 4px solid #60a5fa; border-radius: 50%;
+            color: white; font-size: 32px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
+            transition: transform 0.05s ease;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tap-button:active { transform: scale(0.92); }
+
+        /* Bottom Menu */
+        .footer {
+            width: 100%; padding: 15px; background: rgba(15, 23, 42, 0.9);
+            display: flex; flex-direction: column; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .ad-button {
+            width: 100%; padding: 12px; background: #eab308; color: #0f172a; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);
+        }
+        .ad-button:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; box-shadow: none; }
+        
+        .nav-menu { display: flex; justify-content: space-around; width: 100%; }
+        .nav-btn { background: none; border: none; color: #94a3b8; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .nav-btn.active { color: #facc15; }
+
+        /* Modals */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content {
+            background: #1e293b; width: 100%; max-width: 380px; border-radius: 20px; padding: 20px;
+            display: flex; flex-direction: column; gap: 15px; max-height: 80vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: bold; color: #facc15; }
+        .close-btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+        .item-card { background: #0f172a; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .action-btn { background: #3b82f6; color: #fff; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .action-btn:disabled { background: #475569; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="wallet-soon" id="walletBtn">Coming Soon (Wallet)</div>
+        <div class="top-ads-icons">
+            <button class="top-ad-btn" onclick="openTopAdModal(1)">USD Ad</button>
+            <button class="top-ad-btn" onclick="openTopAdModal(2)">EUR Ad</button>
+            <button class="top-ad-btn" onclick="openTopAdModal(3)">BMW Ad</button>
+        </div>
+    </div>
+
+    <!-- Score & Energy -->
+    <div class="score-section">
+        <div class="score-container" id="score">0</div>
+        <div class="energy-container">Energy: <span id="energy">50</span> / <span id="maxEnergy">50</span></div>
+    </div>
+
+    <!-- Main Tapper -->
+    <div class="clicker-container">
+        <button class="tap-button" id="tapBtn">TAP</button>
+    </div>
+
+    <!-- Footer / Nav -->
+    <div class="footer">
+        <button class="ad-button" id="watchAdBtn">ADS: Watch ad for +300 Coins 🎁</button>
+        <div class="nav-menu">
+            <button class="nav-btn active" onclick="switchTab('game')">🏠 Home</button>
+            <button class="nav-btn" onclick="openModal('friendsModal')">👥 Friends</button>
+            <button class="nav-btn" onclick="openModal('boostModal')">🚀 Boosts</button>
+            <button class="nav-btn" onclick="openModal('shopModal')">🎨 Skins</button>
+            <button class="nav-btn" onclick="openModal('dailyModal')">📅 Daily</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Friends Modal -->
+    <div class="modal" id="friendsModal">
+        <div class="modal-content">
+            <div class="modal-header"><span>Invite Friends</span><button class="close-btn" onclick="closeModal('friendsModal')">✕</button></div>
+            <p style="font-size: 13px; color: #94a3b8;">Share your referral link. Rewards are given only after the user starts the bot via your link!</p>
+            <button class="action-btn" onclick="copyRefLink()">Copy Referral Link</button>
+            <div id="refStatus" style="font-size: 12px; color: #22c55e;"></div>
+        </div>
+    </div>
+
+    <!-- Boosts Modal -->
+    <div class="modal" id="boostModal">
+        <div class="modal-content">
+            <div class="modal-header"><span>Boosters</span><button class="close-btn" onclick="closeModal('boostModal')">✕</button></div>
+            <div class="item-card">
+                <div><b>Max Energy</b><br><small>Upgrade (+10 energy)</small></div>
+                <button class="action-btn" onclick="buyUpgrade('energy')">1000 Coins</button>
+            </div>
+            <div class="item-card">
+                <div><b>Tap Power</b><br><small>Upgrade (+1 per tap)</small></div>
+                <button class="action-btn" onclick="buyUpgrade('tap')">1000 Coins</button>
+            </div>
+            <div class="item-card">
+                <div><b>Auto Bot</b><br><small>Farms 1 coin / 10s (3 hours max)</small></div>
+                <button class="action-btn" id="buyBotBtn" onclick="buyAutoBot()">150,000 Coins</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skins & Backgrounds Modal -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-header"><span>Skins & Backgrounds</span><button class="close-btn" onclick="closeModal('shopModal')">✕</button></div>
+            <p style="font-size: 12px; color: #facc15;">Limited Event: End in 1 month! Watch 50 ads to get BMW M5 CS for FREE!</p>
+            <div class="item-card">
+                <div><b>BMW M5 CS Skin</b><br><small>Progress: <span id="bmwAdCount">0</span>/50 ads</small></div>
+                <button class="action-btn" onclick="progressEventAd('bmw')">Watch Ad</button>
+            </div>
+            <div class="item-card">
+                <div><b>Jet Black Car Tapper</b><br><small>Price: 1,000,000 Coins</small></div>
+                <button class="action-btn" onclick="buySkin('black')">Buy</button>
+            </div>
+            <div class="item-card">
+                <div><b>Pure White Car Tapper</b><br><small>Price: 1,000,000 Coins</small></div>
+                <button class="action-btn" onclick="buySkin('white')">Buy</button>
+            </div>
+            <div class="item-card">
+                <div><b>Japanese Style BG</b><br><small>Price: 2,000,000 Coins</small></div>
+                <button class="action-btn" onclick="buyBg('japan')">Buy</button>
+            </div>
+            <div class="item-card">
+                <div><b>American Style BG</b><br><small>Price: 2,000,000 Coins</small></div>
+                <button class="action-btn" onclick="buyBg('usa')">Buy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Reward Modal -->
+    <div class="modal" id="dailyModal">
+        <div class="modal-content">
+            <div class="modal-header"><span>Daily Bonus</span><button class="close-btn" onclick="closeModal('dailyModal')">✕</button></div>
+            <p style="font-size: 13px; color: #94a3b8;">Log in every day to claim rewards. Streak resets if you miss a day!</p>
+            <div id="dailyDaysContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            <button class="action-btn" id="claimDailyBtn" onclick="claimDailyReward()">Claim Today's Reward</button>
+        </div>
+    </div>
+
+    <!-- Promo Event / Top Ad Modal -->
+    <div class="modal" id="topAdModal">
+        <div class="modal-content">
+            <div class="modal-header"><span id="topAdTitle">Special Promo</span><button class="close-btn" onclick="closeModal('topAdModal')">✕</button></div>
+            <p id="topAdDesc" style="font-size: 13px; color: #94a3b8;"></p>
+            <div style="font-weight: bold; margin-bottom: 5px;">Progress: <span id="promoProgress">0</span>/10 Ads</div>
+            <button class="action-btn" onclick="doPromoAd()">Watch Ad</button>
+        </div>
+    </div>
+
+    <!-- Adsgram SDK -->
+    <script src="https://sad.adsgram.ai/js/sad.js"></script>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Game Data state
+        let score = parseInt(localStorage.getItem('nc_score')) || 0;
+        let maxEnergy = parseInt(localStorage.getItem('nc_max_energy')) || 50;
+        let energy = parseInt(localStorage.getItem('nc_energy')) || maxEnergy;
+        let tapPower = parseInt(localStorage.getItem('nc_tap_power')) || 1;
+        let hasAutoBot = JSON.parse(localStorage.getItem('nc_has_bot')) || false;
+        let lastExitTime = parseInt(localStorage.getItem('nc_exit_time')) || Date.now();
+
+        // Event Ads Progress
+        let bmwAds = parseInt(localStorage.getItem('nc_bmw_ads')) || 0;
+        let usdAds = parseInt(localStorage.getItem('nc_usd_ads')) || 0;
+        let eurAds = parseInt(localStorage.getItem('nc_eur_ads')) || 0;
+
+        // Daily Streak Data
+        let currentDay = parseInt(localStorage.getItem('nc_daily_day')) || 1;
+        let lastClaimDate = localStorage.getItem('nc_last_claim') || "";
+
+        const scoreEl = document.getElementById('score');
+        const energyEl = document.getElementById('energy');
+        const maxEnergyEl = document.getElementById('maxEnergy');
+        const watchAdBtn = document.getElementById('watchAdBtn');
+
+        scoreEl.textContent = score;
+        energyEl.textContent = energy;
+        maxEnergyEl.textContent = maxEnergy;
+
+        // Auto Bot offline earnings calculation
+        if (hasAutoBot) {
+            const now = Date.now();
+            const diffSeconds = Math.floor((now - lastExitTime) / 1000);
+            const maxFarmSeconds = 3 * 3600; // 3 hours limit
+            const effectiveSeconds = Math.min(diffSeconds, maxFarmSeconds);
+            const earnedCoins = Math.floor(effectiveSeconds / 10); // 1 coin per 10s
+            if (earnedCoins > 0) {
+                score += earnedCoins;
+                alert(`Auto Bot farmed ${earnedCoins} coins while you were away!`);
+            }
+        }
+
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('nc_exit_time', Date.now());
+            localStorage.setItem('nc_score', score);
+            localStorage.setItem('nc_energy', energy);
+        });
+
+        // Energy Recovery (1 per sec)
+        setInterval(() => {
+            if (energy < maxEnergy) {
+                energy = Math.min(maxEnergy, energy + 1);
+                energyEl.textContent = energy;
+                localStorage.setItem('nc_energy', energy);
+            }
+        }, 1000);
+
+        // Auto Bot active interval (1 coin per 10s if running)
+        if (hasAutoBot) {
+            setInterval(() => {
+                score += 1;
+                scoreEl.textContent = score;
+                localStorage.setItem('nc_score', score);
+            }, 10000);
+        }
+
+        // Tapping logic
+        document.getElementById('tapBtn').addEventListener('click', () => {
+            if (energy >= tapPower) {
+                score += tapPower;
+                energy -= tapPower;
+                scoreEl.textContent = score;
+                energyEl.textContent = energy;
+                localStorage.setItem('nc_score', score);
+                localStorage.setItem('nc_energy', energy);
+                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            }
+        });
+
+        // Adsgram controller (int-44805)
+        const adController = window.Adsgram ? window.Adsgram.init({ blockId: "int-44805", debug: true }) : null;
+
+        // 30 Seconds Ad Cooldown Timer
+        let adCooldown = parseInt(localStorage.getItem('nc_ad_cooldown')) || 0;
+        function updateAdTimer() {
+            const now = Date.now();
+            if (adCooldown > now) {
+                const rem = Math.ceil((adCooldown - now) / 1000);
+                watchAdBtn.disabled = true;
+                watchAdBtn.textContent = `Wait for next ad: ${rem}s ⏳`;
+            } else {
+                watchAdBtn.disabled = false;
+                watchAdBtn.textContent = "ADS: Watch ad for +300 Coins 🎁";
+            }
+        }
+        setInterval(updateAdTimer, 1000);
+        updateAdTimer();
+
+        watchAdBtn.addEventListener('click', async () => {
+            if (!adController) { alert("Ad system initializing..."); return; }
+            try {
+                await adController.show();
+                score += 300;
+                energy = maxEnergy;
+                scoreEl.textContent = score;
+                energyEl.textContent = energy;
+                localStorage.setItem('nc_score', score);
+                localStorage.setItem('nc_energy', energy);
+
+                adCooldown = Date.now() + 30000; // 30 seconds
+                localStorage.setItem('nc_ad_cooldown', adCooldown);
+                updateAdTimer();
+                alert("Reward claimed! +300 Coins & Energy refilled.");
+            } catch (err) {
+                console.log("Ad closed or error", err);
+            }
+        });
+
+        // Upgrades Logic
+        function buyUpgrade(type) {
+            if (type === 'energy') {
+                if (score >= 1000) {
+                    score -= 1000;
+                    maxEnergy += 10;
+                    energy = maxEnergy;
+                    maxEnergyEl.textContent = maxEnergy;
+                    energyEl.textContent = energy;
+                    localStorage.setItem('nc_max_energy', maxEnergy);
+                    alert("Max Energy upgraded to " + maxEnergy);
+                } else alert("Not enough coins! Need 1000");
+            } else if (type === 'tap') {
+                if (score >= 1000) {
+                    score -= 1000;
+                    tapPower += 1;
+                    localStorage.setItem('nc_tap_power', tapPower);
+                    alert("Tap Power upgraded to +" + tapPower);
+                } else alert("Not enough coins! Need 1000");
+            }
+            scoreEl.textContent = score;
+            localStorage.setItem('nc_score', score);
+        }
+
+        function buyAutoBot() {
+            if (hasAutoBot) { alert("Auto Bot already purchased!"); return; }
+            if (score >= 150000) {
+                score -= 150000;
+                hasAutoBot = true;
+                localStorage.setItem('nc_has_bot', true);
+                scoreEl.textContent = score;
+                alert("Auto Bot activated! It will farm for 3 hours when you leave.");
+                location.reload();
+            } else {
+                alert("Not enough coins! Need 150,000 Coins.");
+            }
+        }
+
+        // Referral System
+        function copyRefLink() {
+            const botUsername = tg.initDataUnsafe?.user?.id ? "YourBotUsername" : "YourBotUsername";
+            const refLink = `https://t.me/${botUsername}?start=ref_${tg.initDataUnsafe?.user?.id || '123'}`;
+            navigator.clipboard.writeText(refLink);
+            document.getElementById('refStatus').textContent = "Referral link copied to clipboard!";
+        }
+
+        // Daily Rewards Logic
+        const dailyRewards = [500, 1000, 2500, 5000, 10000, 20000, 50000];
+        function renderDailyModal() {
+            const container = document.getElementById('dailyDaysContainer');
+            container.innerHTML = '';
+            const todayStr = new Date().toDateString();
+            
+            // Check if streak is broken (missed a day)
+            if (lastClaimDate) {
+                const lastDate = new Date(lastClaimDate);
+                const diffTime = Math.abs(new Date() - lastDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 2) {
+                    currentDay = 1; // Reset streak
+                    localStorage.setItem('nc_daily_day', 1);
+                }
+            }
+
+            for (let i = 1; i <= 7; i++) {
+                container.innerHTML += `<div class="item-card" style="${i === currentDay ? 'border: 1px solid #facc15;' : ''}">
+                    <div><b>Day ${i}</b></div>
+                    <div>${dailyRewards[i-1]} Coins</div>
+                </div>`;
+            }
+        }
+
+        function claimDailyReward() {
+            const todayStr = new Date().toDateString();
+            if (lastClaimDate === todayStr) {
+                alert("You already claimed today's reward! Come back tomorrow.");
+                return;
+            }
+            score += dailyRewards[currentDay - 1];
+            scoreEl.textContent = score;
+            localStorage.setItem('nc_score', score);
+            
+            lastClaimDate = todayStr;
+            localStorage.setItem('nc_last_claim', lastClaimDate);
+
+            alert(`Claimed Day ${currentDay} reward: +${dailyRewards[currentDay-1]} Coins!`);
+            currentDay = currentDay < 7 ? currentDay + 1 : 1;
+            localStorage.setItem('nc_daily_day', currentDay);
+            renderDailyModal();
+        }
+
+        // Skins & Themes
+        function buySkin(type) {
+            if (score >= 1000000) {
+                score -= 1000000;
+                scoreEl.textContent = score;
+                localStorage.setItem('nc_score', score);
+                if (type === 'black') {
+                    document.querySelector('.tap-button').style.background = "radial-gradient(circle, #334155, #000000)";
+                    document.querySelector('.tap-button').style.borderColor = "#64748b";
+                    alert("Jet Black Car Tapper skin equipped!");
+                } else if (type === 'white') {
+                    document.querySelector('.tap-button').style.background = "radial-gradient(circle, #ffffff, #cbd5e1)";
+                    document.querySelector('.tap-button').style.borderColor = "#94a3b8";
+                    alert("Pure White Car Tapper skin equipped!");
+                }
+            } else alert("Not enough coins! Need 1,000,000 Coins.");
+        }
+
+        function buyBg(type) {
+            if (score >= 2000000) {
+                score -= 2000000;
+                scoreEl.textContent = score;
+                localStorage.setItem('nc_score', score);
+                if (type === 'japan') {
+                    document.body.style.backgroundImage = "linear-gradient(rgba(15,23,42,0.7), rgba(15,23,42,0.7)), url('https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=600&q=80')";
+                    alert("Japanese Style Background applied!");
+                } else if (type === 'usa') {
+                    document.body.style.backgroundImage = "linear-gradient(rgba(15,23,42,0.7), rgba(15,23,42,0.7)), url('https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&w=600&q=80')";
+                    alert("American Style Background applied!");
+                }
+            } else alert("Not enough coins! Need 2,000,000 Coins.");
+        }
+
+        // Top Right Event/Promo Ad Modals
+        let activePromoType = '';
+        function openTopAdModal(type) {
+            activePromoType = type;
+            const modal = document.getElementById('topAdModal');
+            modal.style.display = 'flex';
+            if (type === 1) {
+                document.getElementById('topAdTitle').textContent = "USD Skin Promo";
+                document.getElementById('topAdDesc').textContent = "Watch 10 ads to unlock the USD symbol skin!";
+                document.getElementById('promoProgress').textContent = usdAds;
+            } else if (type === 2) {
+                document.getElementById('topAdTitle').textContent = "EUR Skin Promo";
+                document.getElementById('topAdDesc').textContent = "Watch 10 ads to unlock the EUR symbol skin!";
+                document.getElementById('promoProgress').textContent = eurAds;
+            } else if (type === 3) {
+                document.getElementById('topAdTitle').textContent = "BMW M5 CS Event";
+                document.getElementById('topAdDesc').textContent = "Limited 1 month event! Watch 50 ads to get BMW M5 CS skin!";
+                document.getElementById('promoProgress').textContent = bmwAds;
+            }
+        }
+
+        async function doPromoAd() {
+            if (!adController) { alert("Ad system not ready"); return; }
+            try {
+                await adController.show();
+                if (activePromoType === 1) {
+                    usdAds++;
+                    localStorage.setItem('nc_usd_ads', usdAds);
+                    document.getElementById('promoProgress').textContent = usdAds;
+                    if (usdAds >= 10) alert("Congratulations! USD Skin unlocked!");
+                } else if (activePromoType === 2) {
+                    eurAds++;
+                    localStorage.setItem('nc_eur_ads', eurAds);
+                    document.getElementById('promoProgress').textContent = eurAds;
+                    if (eurAds >= 10) alert("Congratulations! EUR Skin unlocked!");
+                } else if (activePromoType === 3) {
+                    bmwAds++;
+                    localStorage.setItem('nc_bmw_ads', bmwAds);
+                    document.getElementById('promoProgress').textContent = bmwAds;
+                    if (bmwAds >= 50) alert("Congratulations! BMW M5 CS Skin unlocked!");
+                }
+            } catch(e) { console.log(e); }
+        }
+
+        function progressEventAd(type) {
+            openTopAdModal(3);
+        }
+
+        // Modal Controls
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+            if (id === 'dailyModal') renderDailyModal();
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        function switchTab(tab) {
+            // Tab switching helper
+        }
+    </script>
+</body>
+</html>
