@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tapping Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+        }
+        .score-container {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4ecca3;
+            margin-top: 10px;
+            text-shadow: 0 0 10px rgba(78, 204, 163, 0.5);
+        }
+        .clicker-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+        .tap-button {
+            width: 220px;
+            height: 220px;
+            background: linear-gradient(145deg, #0f3460, #e94560);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .tap-button:active {
+            transform: scale(0.92);
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.6);
+        }
+        .footer {
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ad-button {
+            width: 100%;
+            padding: 15px;
+            background: #4ecca3;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(78, 204, 163, 0.3);
+            transition: background 0.2s;
+        }
+        .ad-button:active {
+            background: #3db892;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Монеталар</h2>
+        <div class="score-container" id="score">0</div>
+    </div>
+
+    <div class="clicker-container">
+        <button class="tap-button" id="tapBtn">ЖАСУ!</button>
+    </div>
+
+    <div class="footer">
+        <button class="ad-button" id="watchAdBtn">Жарнама көріп +300 алу 🎁</button>
+    </div>
+
+    <!-- Adsgram SDK кітапханасы -->
+    <script src="https://sad.adsgram.ai/js/sad.js"></script>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let score = parseInt(localStorage.getItem('game_score')) || 0;
+        const scoreElement = document.getElementById('score');
+        scoreElement.textContent = score;
+
+        // Тап жасаған кезде ұпай қосу
+        document.getElementById('tapBtn').addEventListener('click', () => {
+            score += 1;
+            scoreElement.textContent = score;
+            localStorage.setItem('game_score', score);
+            
+            // Жеңіл діріл (vibro) қосу
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+        });
+
+        // Adsgram Controller баптау (Жаңа int-44805 блогы)
+        const adController = window.Adsgram ? window.Adsgram.init({ blockId: "int-44805", debug: true }) : null;
+
+        document.getElementById('watchAdBtn').addEventListener('click', async () => {
+            if (!adController) {
+                alert("Жарнама жүйесі жүктелмеді немесе бұл браузерде қолдау көрсетілмейді.");
+                return;
+            }
+
+            try {
+                // Жарнаманы көрсету
+                const result = await adController.show();
+                // Егер пайдаланушы жарнаманы соңына дейін көрсе:
+                score += 300;
+                scoreElement.textContent = score;
+                localStorage.setItem('game_score', score);
+                alert("Құттықтаймыз! Сізге +300 монета берілді!");
+            } catch (err) {
+                console.log("Жарнама көрсетілмеді немесе жабылды:", err);
+                // Қате болса да ойын тоқтап қалмайды
+            }
+        });
+    </script>
+</body>
+</html>
